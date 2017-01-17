@@ -60,6 +60,10 @@ LiquidCrystal lcd(LCD_RS_PIN,
                   LCD_D7_PIN);
 
 int count = 0;
+int sampleBuffer[10];
+int sampleIdx = 0;
+int lastAverage = 0;
+int lastButtonValue = 0;
 
 void setup() {
   // Set up LCD
@@ -80,28 +84,47 @@ void setup() {
 
   Serial.begin(9600);
   analogReference(EXTERNAL);
+
+  // Initialize average
+  for(int i=0; i<10; ++i) {
+    sampleBuffer[i] = -1;
+  }
 }
 
 void loop() {
   int buttonValue = analogRead(BUTTONS_PIN);
-  delay(20);
+  delay(10);
   int thermistorValue = analogRead(THERMISTOR_PIN);
-  delay(20);
-  
-  lcd.clear();
-  lcd.print("buttons: ");
-  lcd.print(buttonValue);
-  lcd.setCursor(0, 1);
-  lcd.print("thermistor: ");
-  lcd.print(thermistorValue);
+  delay(10);
 
   if(buttonValue > 1000) {
     digitalWrite(RELAY_PIN, LOW);
-  } else if(buttonValue > 920 && buttonValue < 940) {
-    digitalWrite(LCD_LED_PIN, LOW);
+    digitalWrite(SCK, HIGH);
   } else {
     digitalWrite(RELAY_PIN, HIGH);
-    digitalWrite(LCD_LED_PIN, HIGH);
+    digitalWrite(SCK, LOW);
+  }
+
+  sampleBuffer[sampleIdx] = thermistorValue;
+  sampleIdx = (sampleIdx + 1) % 10;
+
+  // Determine average
+  int average = 0;
+  for(int i=0; i<10; ++i) {
+    average += sampleBuffer[i];
+  }
+  average /= 10;
+
+  if(average != lastAverage || buttonValue != lastButtonValue) {
+    lcd.clear();
+    lcd.print("A0: ");
+    lcd.print(average);
+    lcd.setCursor(0,1);
+    lcd.print("A1: ");
+    lcd.print(buttonValue);
+
+    lastAverage = average;
+    lastButtonValue = buttonValue;
   }
 
   delay(100);

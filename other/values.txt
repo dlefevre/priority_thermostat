@@ -1,0 +1,18 @@
+#
+# Values on the A1 analog pin for the four buttons:
+#
+1	0    Ohm	1020
+2	1   kOhm	926
+3	4.7 kOhm	688
+4	10  kOhm	501
+
+#
+# Calibration values for Thermistor (in degrees Celcius)
+#
+90	587
+70	553
+50	515
+30	476
+10	435
+
+
