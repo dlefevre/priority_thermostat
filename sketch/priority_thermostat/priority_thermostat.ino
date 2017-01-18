@@ -37,6 +37,8 @@
  */
 
 #include <LiquidCrystal.h>
+#include "AnalogButtons.h"
+#include "Thermostat.h"
 
 // LCD pins
 #define LCD_RS_PIN 2
@@ -51,6 +53,10 @@
 #define THERMISTOR_PIN A0
 #define BUTTONS_PIN A1
 #define RELAY_PIN 9
+#define ON_OFF_PIN 10
+
+// Other magic variables
+#define ANALOG_TOLERANCE 10
 
 LiquidCrystal lcd(LCD_RS_PIN,
                   LCD_ENABLE_PIN,
@@ -58,6 +64,8 @@ LiquidCrystal lcd(LCD_RS_PIN,
                   LCD_D5_PIN,
                   LCD_D6_PIN,
                   LCD_D7_PIN);
+AnalogButtons<4> buttons(BUTTONS_PIN, ANALOG_TOLERANCE);
+Thermostat thermostat(THERMISTOR_PIN);
 
 int count = 0;
 int sampleBuffer[10];
@@ -66,6 +74,8 @@ int lastAverage = 0;
 int lastButtonValue = 0;
 
 void setup() {
+  Serial.begin(9600);
+  
   // Set up LCD
   pinMode(LCD_RS_PIN, OUTPUT);
   pinMode(LCD_ENABLE_PIN, OUTPUT);
@@ -82,8 +92,14 @@ void setup() {
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, HIGH);
 
-  Serial.begin(9600);
+  // Set up 3.3V reference
   analogReference(EXTERNAL);
+
+  // Add buttons
+  buttons.set(0, 1020);
+  buttons.set(1, 926);
+  buttons.set(2, 688);
+  buttons.set(3, 501);
 
   // Initialize average
   for(int i=0; i<10; ++i) {
@@ -92,19 +108,9 @@ void setup() {
 }
 
 void loop() {
-  int buttonValue = analogRead(BUTTONS_PIN);
-  delay(10);
   int thermistorValue = analogRead(THERMISTOR_PIN);
   delay(10);
-
-  if(buttonValue > 1000) {
-    digitalWrite(RELAY_PIN, LOW);
-    digitalWrite(SCK, HIGH);
-  } else {
-    digitalWrite(RELAY_PIN, HIGH);
-    digitalWrite(SCK, LOW);
-  }
-
+  
   sampleBuffer[sampleIdx] = thermistorValue;
   sampleIdx = (sampleIdx + 1) % 10;
 
@@ -115,16 +121,14 @@ void loop() {
   }
   average /= 10;
 
-  if(average != lastAverage || buttonValue != lastButtonValue) {
-    lcd.clear();
-    lcd.print("A0: ");
-    lcd.print(average);
-    lcd.setCursor(0,1);
-    lcd.print("A1: ");
-    lcd.print(buttonValue);
-
-    lastAverage = average;
-    lastButtonValue = buttonValue;
+  buttons.sample();
+  if(buttons.isShortPress()) {
+    Serial.print("short: ");
+    Serial.println(buttons.getPressed());
+  }
+  if(buttons.isLongPress()) {
+    Serial.print("long: ");
+    Serial.println(buttons.getPressed());
   }
 
   delay(100);

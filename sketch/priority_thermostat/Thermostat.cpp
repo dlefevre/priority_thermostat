@@ -25,72 +25,47 @@
  * For more information, please refer to <http://unlicense.org>
  */
 
+#include "Thermostat.h"
+
+#define UNDEF -9999
+
 /*
- * Test sketch for determining the noise on the 3.3V channel and thermistor. 
- * The LCD display will (16x2) will display the minimum, maximum, delta and
- * average value.
+ * Constructor
  */
-#include <LiquidCrystal.h>
-
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
-
-#define THERMISTORPIN A0
-
-int minShown = 9999;
-int maxShown = 0;
-int avgShown = 0;
-int delta = 0;
-int minCollect = 1023;
-int maxCollect = 0;
-int count = 0;
-int showCount = 0;
-int lastShowCount = 0;
-
-void setup() {
-  lcd.begin(16, 2);
-  analogReference(EXTERNAL);
-  lcd.print("-");
-  lcd.setCursor(0,1);
-  lcd.print("-");
+Thermostat::Thermostat(int _pin) {
+  pin = _pin;
+  rawIndex = 0;
+  temperature = UNDEF;
 }
 
-void loop() {
-  int raw = analogRead(THERMISTORPIN);
+/*
+ * Sample temperature and millis
+ */
+void Thermostat::sample() {
+  sample(millis());
+}
 
-  if(minCollect > raw) {
-    minCollect = raw;
-  }
-  if(maxCollect < raw) {
-    maxCollect = raw;
-  }
+/*
+ * Sample temperature
+ */
+void Thermostat::sample(unsigned long _millis) {
+  raw[rawIndex++] = analogRead(pin);
+  delay(10);
 
-  if(++count % 100 == 0) {
-    avgShown = (minCollect + maxCollect) / 2;
-    delta = maxCollect - minCollect;
-    minShown = minCollect;
-    maxShown = maxCollect;
-
-    minCollect = 1023;
-    maxCollect = 0;
-    ++showCount;
-    count = 0;
+  if(rawIndex >= SAMPLE_SET_SIZE) {
+    rawIndex = 0;
+    temperature = 0; // anything other than UNDEF, actual temperature will be recalculated.
   }
 
-  if(showCount != lastShowCount) {
-    lcd.clear();
-    lcd.print(minShown);
-    lcd.print(" - ");
-    lcd.print(maxShown);
-    lcd.setCursor(12,0);
-    lcd.print(showCount, HEX);
-    lcd.setCursor(0, 1);
-    lcd.print(avgShown);
-    lcd.setCursor(7, 1);
-    lcd.print("d: ");
-    lcd.print(delta);
-
-    lastShowCount = showCount;
+  // Determine average of sample set
+  int average = 0;
+  for(int i=0; i<SAMPLE_SET_SIZE; ++i) {
+    average += raw[i];
   }
+  average /= SAMPLE_SET_SIZE;
+
+  // Interpolate 
   
-  delay(15);
+  
 }
+
