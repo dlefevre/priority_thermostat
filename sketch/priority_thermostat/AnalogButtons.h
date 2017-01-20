@@ -35,20 +35,20 @@
 template<size_t N>
 class AnalogButtons {
   public:
-    AnalogButtons(int _pin, int _tolerance);
-    void set(int _index, int _analogValue);
+    AnalogButtons(byte _pin, byte _tolerance);
+    void set(byte _index, int _analogValue);
     void sample();
     void sample(unsigned long _millis);
-    int getPressed();
+    byte getPressed();
     bool isShortPress();
     bool isLongPress();
 
   private:
-    int pin;
-    int tolerance;
+    byte pin;
+    byte tolerance;
     int lowValues[N];
     int highValues[N];
-    int lastPressedButton;
+    byte lastPressedButton;
     bool shortPress;
     bool longPress;
     unsigned long downTimestamp;
@@ -59,7 +59,7 @@ class AnalogButtons {
  * Constructor, N defines the number of buttons on the analog pin.
  */
 template<size_t N>
-AnalogButtons<N>::AnalogButtons(int _pin, int _tolerance) {
+AnalogButtons<N>::AnalogButtons(byte _pin, byte _tolerance) {
   pin = _pin;
   tolerance = _tolerance;
   lastPressedButton = -1;
@@ -71,7 +71,7 @@ AnalogButtons<N>::AnalogButtons(int _pin, int _tolerance) {
  * Define a button's analog value. 
  */
 template<size_t N>
-void AnalogButtons<N>::set(int _index, int _analogValue) {
+void AnalogButtons<N>::set(byte _index, int _analogValue) {
   lowValues[_index] = _analogValue - tolerance;
   highValues[_index] = _analogValue + tolerance;
 }
@@ -93,7 +93,7 @@ void AnalogButtons<N>::sample(unsigned long _millis) {
   delay(10);
 
   bool pressed = false;
-  for(int i=0; i<N; ++i) {
+  for(byte i=0; i<N; ++i) {
     if(value >= lowValues[i] && value <= highValues[i]) {
       // Detected short press
       if(i != lastPressedButton) {
@@ -125,7 +125,7 @@ void AnalogButtons<N>::sample(unsigned long _millis) {
  * Return the last pressed button
  */
 template<size_t N>
-int AnalogButtons<N>::getPressed() {
+byte AnalogButtons<N>::getPressed() {
   return lastPressedButton;
 }
 

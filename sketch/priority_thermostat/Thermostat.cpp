@@ -26,13 +26,14 @@
  */
 
 #include "Thermostat.h"
+#include "stdlib.h"
 
 #define UNDEF -9999
 
 /*
  * Constructor
  */
-Thermostat::Thermostat(int _pin) {
+Thermostat::Thermostat(byte _pin) {
   pin = _pin;
   rawIndex = 0;
   temperature = UNDEF;
@@ -49,23 +50,153 @@ void Thermostat::sample() {
  * Sample temperature
  */
 void Thermostat::sample(unsigned long _millis) {
-  raw[rawIndex++] = analogRead(pin);
+  // Pull value from our analog pin
+  raw[rawIndex++] = (long)analogRead(pin) * 100L;
   delay(10);
 
+  // Round robin
   if(rawIndex >= SAMPLE_SET_SIZE) {
     rawIndex = 0;
     temperature = 0; // anything other than UNDEF, actual temperature will be recalculated.
   }
 
-  // Determine average of sample set
-  int average = 0;
-  for(int i=0; i<SAMPLE_SET_SIZE; ++i) {
+  // Wait for the sample set to stabilize.
+  if(temperature == UNDEF) {
+    return;
+  }
+
+  // Determin the actual temperature
+  long average = calculateAverage();
+  interpolateTemperature(average); 
+}
+
+/*
+ * Retrieve formatted temperature
+ */
+char * Thermostat::getTemperatureStr(char * _buffer) {
+  char localBuffer[10];
+  memset(localBuffer, '\0', 10);
+
+  // Do the math
+  int integer = temperature / 100;
+  int decimal = temperature % 100;
+  if(decimal < 25) {
+    decimal = 0;
+  } else if(decimal >= 25 && decimal < 50) {
+    decimal = 5;
+  } else if(decimal >= 50 && decimal < 75) {
+    decimal = 5;
+  } else {
+    ++integer;
+    decimal = 0;
+  }
+
+  // Integer part
+  itoa(integer, localBuffer, 10);
+  memcpy(_buffer, localBuffer, strlen(localBuffer) + 1);
+  memcpy(&_buffer[strlen(_buffer)], ".", 2);
+  itoa(decimal, localBuffer, 10);
+  memcpy(&_buffer[strlen(_buffer)], localBuffer, 1);
+  _buffer[strlen(_buffer)] = '\0';
+
+  return _buffer;
+}
+
+/*
+ * Retrieve formatted requested temperature
+ */
+char * Thermostat::getRequestedTemperatureStr(char * _buffer) {
+  return _buffer;
+}
+
+/*
+ * Retrieve formatted hysteresis value
+ */
+char * Thermostat::getHysteresisStr(char * _buffer) {
+  return _buffer;
+}
+
+/*
+ * Retrieve formatted maximum time the boiler is heated before going in alarm.
+ */
+char * Thermostat::getMaxHeatTime(char * _buffer) {
+  return _buffer;
+}
+
+/*
+ * Retrieve formatted maximum temperature, until going in alarm.
+ */
+char * Thermostat::getMaxTemperature(char * _buffer) {
+  return _buffer;
+}
+
+/*
+ * Retrieve raw value
+ */
+long Thermostat::getRaw() {
+  return calculateAverage();
+}
+
+/*
+ * Change the requested temperature
+ */
+void Thermostat::changeRequestedTemperature(int _delta) {
+  requestedTemperature += _delta;
+}
+
+/*
+ * Change hysteresis value
+ */
+void Thermostat::changeHysteresis(int _delta) {
+  hysteresis += _delta;
+}
+
+/*
+ * Change maximum heat time
+ */
+void Thermostat::changeMaxHeatTime(int _delta) {
+  maximumHeatTime += _delta;
+}
+
+/*
+ * Change maximum temperature
+ */
+void Thermostat::changeMaxTemperature(int _delta) {
+  maximumTemperature += _delta;
+}
+
+/*
+ * Determine average of the sample set
+ */
+long Thermostat::calculateAverage() {
+  long average = 0;
+  for(byte i=0; i<SAMPLE_SET_SIZE; ++i) {
     average += raw[i];
   }
-  average /= SAMPLE_SET_SIZE;
+  
+  return average / SAMPLE_SET_SIZE;
+}
 
-  // Interpolate 
-  
-  
+/*
+ * Interpolate the actual temperature
+ */
+void Thermostat::interpolateTemperature(long _value) {
+  // Determine reference frame (when going out of bounds, take the closest)
+  byte i0 = 0;
+  if(_value >= calX[SAMPLE_SET_SIZE - 1]) {
+    i0 = SAMPLE_SET_SIZE - 2;
+  } else {
+    for(byte i=0; i<SAMPLE_SET_SIZE - 1; ++i) {
+      if(_value >= calX[i]) {
+        i0 = i;
+        break;
+      }
+    }
+  }
+
+  // Interpolate
+  const byte i1 = i0 + 1;
+  const long xPart = (_value - calX[i0]) / (calX[i1] - calX[i0]);  
+  temperature = calY[i0] * (1 - xPart) + calY[i1] * xPart;
 }
 

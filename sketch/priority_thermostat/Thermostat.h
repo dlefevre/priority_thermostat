@@ -38,24 +38,45 @@
  * the temperature. We get away with linear interpollation since 
  * our temperature curve is quite straight and I can live with a one
  * or two degree miss on my boiler temperature.
+ * 
+ * Raw number are multiplied by a factor 100 to prevent floating point
+ * arithmetic.
  */
 class Thermostat {
   public:
-    Thermostat(int _pin);
+    Thermostat(byte _pin);
     void sample();
     void sample(unsigned long _millis);
-    //boolean shouldHeat();
-    int getTemperature();
-    //int getHysteresis();
+
+    // Retrieve values (formatted for the LCD)
+    char * getTemperatureStr(char *);
+    char * getRequestedTemperatureStr(char *);
+    char * getHysteresisStr(char *);
+    char * getMaxHeatTime(char *);
+    char * getMaxTemperature(char *);
+    long getRaw();
+
+    // Change values (based on some constants set in the main sketch 
+    void changeRequestedTemperature(int);
+    void changeHysteresis(int);
+    void changeMaxHeatTime(int);
+    void changeMaxTemperature(int);
 
   private:
-    const int calX[5] = {435, 476, 515, 553, 587};
-    const int calY[5] = {10, 30, 50, 70, 90};
-    int pin;
-    int raw[SAMPLE_SET_SIZE];
-    int rawIndex;
+    const long calX[5] = {43500, 47600, 51500, 55300, 58700}; // factor 100
+    const long calY[5] = {1000, 3000, 5000, 7000, 9000};      // factor 100
+    byte pin;
+    long raw[SAMPLE_SET_SIZE]; // factor 100
+    byte rawIndex;
+    
     int temperature;
-    //bool heating;
+    int requestedTemperature;
+    int hysteresis;
+    unsigned long maximumHeatTime;
+    int maximumTemperature;
+    
+    long calculateAverage();
+    void interpolateTemperature(long _value);
     
 };
 

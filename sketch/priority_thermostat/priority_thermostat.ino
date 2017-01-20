@@ -67,12 +67,6 @@ LiquidCrystal lcd(LCD_RS_PIN,
 AnalogButtons<4> buttons(BUTTONS_PIN, ANALOG_TOLERANCE);
 Thermostat thermostat(THERMISTOR_PIN);
 
-int count = 0;
-int sampleBuffer[10];
-int sampleIdx = 0;
-int lastAverage = 0;
-int lastButtonValue = 0;
-
 void setup() {
   Serial.begin(9600);
   
@@ -100,27 +94,9 @@ void setup() {
   buttons.set(1, 926);
   buttons.set(2, 688);
   buttons.set(3, 501);
-
-  // Initialize average
-  for(int i=0; i<10; ++i) {
-    sampleBuffer[i] = -1;
-  }
 }
 
-void loop() {
-  int thermistorValue = analogRead(THERMISTOR_PIN);
-  delay(10);
-  
-  sampleBuffer[sampleIdx] = thermistorValue;
-  sampleIdx = (sampleIdx + 1) % 10;
-
-  // Determine average
-  int average = 0;
-  for(int i=0; i<10; ++i) {
-    average += sampleBuffer[i];
-  }
-  average /= 10;
-
+void loop() {  
   buttons.sample();
   if(buttons.isShortPress()) {
     Serial.print("short: ");
@@ -130,6 +106,12 @@ void loop() {
     Serial.print("long: ");
     Serial.println(buttons.getPressed());
   }
+
+  char strBuffer[20];
+  thermostat.sample();
+  Serial.print(thermostat.getRaw());
+  Serial.print("/");
+  Serial.println(thermostat.getTemperatureStr(strBuffer));
 
   delay(100);
 }
