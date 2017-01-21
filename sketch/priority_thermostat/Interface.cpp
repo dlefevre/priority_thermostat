@@ -28,22 +28,15 @@
 #include "Interface.h"
 #include <stdlib.h>
 
-// Global buffer for formatters
-char formattingBuffer[11];
-
-/*
- * Helper function for formatting temperatures. This function
- * uses the global formatting buffer which can be overwritten
- * at any point in time.
- */
-char * formatTemperature(long _temperature) {
-  formatTemperature(formatBuffer, _temperature);
-}
-
 /*
  * Helper function for formating and rouding temperatures
  */
 char * formatTemperature(char * _buffer, long _temperature) {
+  if(_temperature == UNDEF) {
+    sprintf(_buffer, "-");
+    return _buffer;
+  }
+  
   // Do the math
   int integer = _temperature / 100;
   int decimal = _temperature % 100;
@@ -59,33 +52,29 @@ char * formatTemperature(char * _buffer, long _temperature) {
   }
 
   // Format
-  sprintf(_buffer, "%d.%d C", integer, decimal);
+  sprintf(_buffer, "%d.%d%cC", integer, decimal, (char)223);
   return _buffer;
 }
 
 /*
- * Helper function for formatting time. This function
- * uses the global formatting buffer which can be overwritten
- * at any point in time.
+ * Helper function for formatting time (limited to minutes)
  */
-char * formatTime(unsigned long _time) {
-  formatTime(formatBuffer, _time);
-}
-
-/*
- * Helper function for formatting time
- */
-char * formatTime(char * _buffer, unsigned long _time) {
+char * formatTimeM(char * _buffer, unsigned long _time) {
   // Do the math
   _time /= 1000; // convert milliseconds to seconds
   int hours = _time / 3600;
-  int remainder = _time % 3600;
-  int minutes = _time / 60;
-  int seconds = _time % 60;
+  int minutes = (_time % 3600) / 60;
 
   // Format
-  sprintf(_buffer, "%dh%02d'%02d\"", hours, minutes, seconds);
+  sprintf(_buffer, "%dh%02d'", hours, minutes);
   return _buffer;
+}
+
+/*
+ * Helper function for getting a pointer to the end of a string
+ */
+char * appendPtr(char * _str) {
+  return &_str[strlen(_str)];
 }
 
 /*
@@ -99,6 +88,8 @@ Interface::Interface(LiquidCrystal * _lcd,
   thermostat = _thermostat;
 
   inMenu = false;
+  menuPosition = 0;
+  loadParameters();
 }
 
 /*
@@ -137,30 +128,204 @@ void Interface::render(unsigned long _millis) {
 }
 
 /*
+ * Load all thermostat parameters (thermostat -> interface)
+ */
+void Interface::loadParameters() {
+  if(inMenu) {
+    hysteresis = thermostat->getHysteresis();
+    minimumTemperature = thermostat->getMinTemperature();
+    maximumTemperature = thermostat->getMaxTemperature();
+    maximumHeatTime = thermostat->getMaxHeatTime();
+  } else {
+    requestedTemperature = thermostat->getRequestedTemperature();
+  }
+}
+
+/*
+ * Save all parameters (interface -> thermostat)
+ */
+void Interface::saveParameters() {
+  if(inMenu) {
+    thermostat->setHysteresis(hysteresis);
+    thermostat->setMinTemperature(minimumTemperature);
+    thermostat->setMaxTemperature(maximumTemperature);
+    thermostat->setMaxHeatTime(maximumHeatTime);
+  } else {
+    thermostat->setRequestedTemperature(requestedTemperature);
+  }
+}
+
+/*
+ * Process an inrement for a parameter
+ */
+void Interface::processParameterIncrement(int _multiplier) {
+  if(inMenu) {
+    switch(menuPosition) {
+      case 0:
+        hysteresis += INCR_HYSTERESIS * _multiplier;
+        break;
+      case 1:
+        minimumTemperature += INCR_MIN_TEMPERATURE * _multiplier;
+        break;
+      case 2:
+        maximumTemperature += INCR_MAX_TEMPERATURE * _multiplier;
+        break;
+      case 3:
+        maximumHeatTime += INCR_MAX_HEAT_TIME * _multiplier;
+        break;
+    }
+  } else {
+    requestedTemperature += INCR_REQUESTED_TEMPERATURE * _multiplier;
+  }
+}
+
+/*
  * Manage interaction on the status screen
  */
 void Interface::interactStatusScreen(unsigned long _millis) {
-  
+  if(buttons->isLongPress()) {
+    if(buttons->getPressed() == BUTTON_MENU) {
+      inMenu = true;
+      inSetMode = false;
+      menuPosition = 0;
+      loadParameters();
+    } else if(buttons->getPressed() == BUTTON_SET && !inSetMode) {
+      inSetMode = true;
+      loadParameters();
+    }
+  }
+
+  if(buttons->isShortPress()) {
+    if(buttons->getPressed() == BUTTON_SET && inSetMode) {
+      inSetMode = false;
+      saveParameters();
+    } else if(buttons->getPressed() == BUTTON_INCREASE && inSetMode) {
+      processParameterIncrement(1);
+    } else if(buttons->getPressed() == BUTTON_DECREASE && inSetMode) {
+      processParameterIncrement(-1);
+    }
+  }
 }
 
 /*
  * Manage interaction on the menu screen
  */
 void Interface::interactMenuScreen(unsigned long _millis) {
+  if(buttons->isShortPress()) {
+    // Menu navigation
+    if(buttons->getPressed() == BUTTON_MENU) {
+      
+      inMenu = false;
+      inSetMode = false;
+      loadParameters();
+      
+   } else if(buttons->getPressed() == BUTTON_INCREASE) {
+    
+      if(inSetMode) {
+        processParameterIncrement(1);
+      } else {
+        menuPosition = (menuPosition + 1) % NUMBER_MENU_ITEMS;
+      }
+      
+    } else if(buttons->getPressed() == BUTTON_DECREASE) {
+      
+      if(inSetMode) {
+        processParameterIncrement(-1);
+      } else {
+        if(menuPosition == 0) {
+          menuPosition = NUMBER_MENU_ITEMS - 1;
+        } else {
+          --menuPosition;
+        }
+      }
+      
+    } else if(buttons->getPressed() == BUTTON_SET && inSetMode) {
+      inSetMode = false;
+      saveParameters();
+    }
+  }
   
+  if(buttons->isLongPress() && buttons->getPressed() == BUTTON_SET && !inSetMode) {
+    inSetMode = true;
+  }
 }
 
 /*
  * Render the status screen
  */
 void Interface::renderStatusScreen(unsigned long _millis) {
+  clearBuffer();
   
+  sprintf(buffer[0], "Cur.:  ");
+  formatTemperature(appendPtr(buffer[0]), thermostat->getTemperature());
+  sprintf(buffer[1], "Req.:  ");
+  formatTemperature(appendPtr(buffer[1]), requestedTemperature);
+  if(inSetMode) {
+    sprintf(&buffer[1][15], "(set)");
+  }
+  sprintf(buffer[2], "Stat.: ");
+  sprintf(appendPtr(buffer[2]), thermostat->getStatus());
+  
+  writeToLcd();
 }
 
 /*
  * Render the menu screen
  */
 void Interface::renderMenuScreen(unsigned long _millis) {
-  
+  clearBuffer();
+
+  // Populate the menu
+  byte menuScreen = menuPosition / 3;
+  if(menuScreen == 0) {
+    sprintf(buffer[0], "---- MENU (1/2) ----");
+    sprintf(buffer[1], " Hyst.:     ");
+    formatTemperature(appendPtr(buffer[1]), hysteresis);
+    sprintf(buffer[2], " Min. tmp.: ");
+    formatTemperature(appendPtr(buffer[2]), minimumTemperature);
+    sprintf(buffer[3], " Max. tmp.: ");
+    formatTemperature(appendPtr(buffer[3]), maximumTemperature);
+  } else if (menuScreen == 1) {
+    sprintf(buffer[0], "---- MENU (2/2) ----");
+    sprintf(buffer[1], " Max. heat: ");
+    formatTimeM(appendPtr(buffer[1]), maximumHeatTime);
+  } else {
+    sprintf(buffer[0], "# ERROR #");
+  }
+
+  // Set the cursor
+  buffer[(menuPosition % 3) + 1][0] = inSetMode ? '*' : '>';
+
+  writeToLcd();
+}
+
+/*
+ * Clear the buffer for the LCD
+ */
+void Interface::clearBuffer() {
+  for(int i=0; i<LCD_ROWS; ++i) {
+    for(int j=0; j<LCD_COLUMNS; ++j) {
+      buffer[i][j] = ' ';
+    }
+  } 
+}
+
+/*
+ * Dump the buffer to the LCD. '\0' characters in the
+ * middle of a line are replaced by space.
+ */
+void Interface::writeToLcd() {
+  for(int i=0; i<LCD_ROWS; ++i) {
+    for(int j=0; j<LCD_COLUMNS; ++j) {
+      if(buffer[i][j] == '\0') {
+        buffer[i][j] = ' ';
+      }
+    }
+    buffer[i][LCD_COLUMNS] = '\0';
+
+    lcd->setCursor(0, i);
+    char * ptr = buffer[i];
+    lcd->print(ptr);
+  }
 }
 

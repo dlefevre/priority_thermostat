@@ -37,6 +37,10 @@
 #define LCD_D7_PIN     7
 #define LCD_LED_PIN    8
 
+// LCD dimensions
+#define LCD_ROWS    4
+#define LCD_COLUMNS 20
+
 // Other pins
 #define THERMISTOR_PIN A0
 #define BUTTONS_PIN    A1
@@ -52,8 +56,8 @@
 
 // Button numbers
 #define NUMBER_OF_BUTTONS 4
-#define BUTTON_DECREASE 0
-#define BUTTON_INCREASE 1
+#define BUTTON_INCREASE 0
+#define BUTTON_DECREASE 1
 #define BUTTON_SET      2
 #define BUTTON_MENU     3
 
@@ -66,19 +70,19 @@
 #define CALIBRATION_SET_SIZE 5
 
 // Defaults
-#define DEFAULT_REQUESTED_TEMPERATURE 50
-#define DEFAULT_HYSTERESIS 5
-#define DEFAULT_MAX_TEMPERATURE 85
-#define DEFAULT_MAX_HEAT_TIME 7200
+#define DEFAULT_REQUESTED_TEMPERATURE 5000
+#define DEFAULT_HYSTERESIS            500
+#define DEFAULT_MIN_TEMPERATURE       0
+#define DEFAULT_MAX_TEMPERATURE       8500
+#define DEFAULT_MAX_HEAT_TIME         7200000L
+#define INCR_REQUESTED_TEMPERATURE 50
+#define INCR_HYSTERESIS            50
+#define INCR_MIN_TEMPERATURE       100
+#define INCR_MAX_TEMPERATURE       100
+#define INCR_MAX_HEAT_TIME         60000L 
 
-// Prompts for LCD
-#define PROMPT_STATUS_1 "Cur.:   "
-#define PROMPT_STATUS_2 "Req.:   "
-#define PROMPT_STATUS_3 "Status: "
-#define PROMPT_MENU_1   "Hyst.:     "
-#define PROMPT_MENU_2   "Min. tmp.: "
-#define PROMPT_MENU_3   "Max. tmp.: "
-#define PROMPT_MENU_4   "Max. run.: "
+// Number of menu items
+#define NUMBER_MENU_ITEMS 4
 
 #endif
 

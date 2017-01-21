@@ -35,6 +35,14 @@ Thermostat::Thermostat(byte _pin) {
   pin = _pin;
   rawIndex = 0;
   temperature = UNDEF;
+
+  requestedTemperature = DEFAULT_REQUESTED_TEMPERATURE;
+  hysteresis = DEFAULT_HYSTERESIS;
+  minimumTemperature = DEFAULT_MIN_TEMPERATURE;
+  maximumTemperature = DEFAULT_MAX_TEMPERATURE;
+  maximumHeatTime = DEFAULT_MAX_HEAT_TIME;
+  strcpy(status, "initializing");
+  heating = false;
 }
 
 /*
@@ -61,11 +69,23 @@ void Thermostat::sample(unsigned long _millis) {
   // Wait for the sample set to stabilize.
   if(temperature == UNDEF) {
     return;
+  } else if(strcmp(status, "initializing") == 0) {
+    strcpy(status, "ready");
   }
-
+  
   // Determin the actual temperature
   long average = calculateAverage();
   interpolateTemperature(average); 
+
+  int halfRange = hysteresis / 2;
+  if(!heating && temperature < requestedTemperature - halfRange) {
+    heating = true;
+    strcpy(status, "heating");
+  }
+  if(heating && temperature > requestedTemperature + halfRange) {
+    heating = false;
+    strcpy(status, "ready");
+  }
 }
 
 /*
@@ -118,6 +138,13 @@ long Thermostat::getRaw() {
 }
 
 /*
+ * Retrieve the thermostat's status
+ */
+char * Thermostat::getStatus() {
+  return status;
+}
+
+/*
  * Change the requested temperature
  */
 void Thermostat::setRequestedTemperature(int _value) {
@@ -143,6 +170,13 @@ void Thermostat::setMaxHeatTime(int _value) {
  */
 void Thermostat::setMaxTemperature(int _value) {
   maximumTemperature = _value;
+}
+
+/*
+ * Change minimum temperature
+ */
+void Thermostat::setMinTemperature(int _value) {
+  minimumTemperature = _value;
 }
 
 /*

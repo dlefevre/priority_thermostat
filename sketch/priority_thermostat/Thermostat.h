@@ -56,6 +56,7 @@ class Thermostat {
     
     int getTemperature();
     long getRaw();
+    char * getStatus();
 
     // Change values (based on some constants set in the main sketch 
     void setRequestedTemperature(int);
@@ -67,17 +68,23 @@ class Thermostat {
   private:
     const long calX[CALIBRATION_SET_SIZE] = {43500L, 47600L, 51500L, 55300L, 58700L};
     const long calY[CALIBRATION_SET_SIZE] = {1000L, 3000L, 5000L, 7000L, 9000L};
-    
+
+    // the mojo
     byte pin;
     long raw[SAMPLE_SET_SIZE];
     byte rawIndex;
-    
+
+    // the values
     int temperature;          // An integer is just about enough for my setup.
     int requestedTemperature;
     int hysteresis;
     unsigned long maximumHeatTime;
     int maximumTemperature;
     int minimumTemperature;
+
+    // the state
+    bool heating;
+    char status[14];
     
     long calculateAverage();
     void interpolateTemperature(long _value);

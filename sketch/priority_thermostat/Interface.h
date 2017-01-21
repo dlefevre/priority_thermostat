@@ -34,6 +34,18 @@
 #include "Thermostat.h"
 #include "AnalogButtons.h"
 
+/*
+ * Implements and interface with:
+ *  - A status screen, displaying:
+ *    - current temperature
+ *    - requested temperature (the requested temperature can be changed)
+ *    - status
+ *  - A menu, allowing us to change:
+ *    - 0: the hysteresis value
+ *    - 1: minimum temperature (alarms)
+ *    - 2: maximum temperature (alarms)
+ *    - 3: maximum run time (alarms)
+ */
 class Interface {
   public:
     Interface(LiquidCrystal *, AnalogButtons<NUMBER_OF_BUTTONS> *, Thermostat *);
@@ -46,15 +58,31 @@ class Interface {
     LiquidCrystal * lcd;
     AnalogButtons<NUMBER_OF_BUTTONS> * buttons;
     Thermostat * thermostat;
+
+    char buffer[LCD_ROWS][LCD_COLUMNS + 1];
+    byte padding[16]; //just in case
     
     bool inSetMode;
     bool inMenu;
     byte menuPosition;
 
+    int requestedTemperature;
+    int hysteresis;
+    int minimumTemperature;
+    int maximumTemperature;
+    unsigned long maximumHeatTime;
+
+    void loadParameters();
+    void saveParameters();
+    void processParameterIncrement(int);
+
     void interactStatusScreen(unsigned long _millis);
     void interactMenuScreen(unsigned long _millis);
     void renderStatusScreen(unsigned long _millis);
     void renderMenuScreen(unsigned long _millis);
+
+    void clearBuffer();
+    void writeToLcd();
 };
 
 #endif

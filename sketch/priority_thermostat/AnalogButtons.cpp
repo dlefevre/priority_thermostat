@@ -27,8 +27,4 @@
 
 #include "AnalogButtons.h"
 
-/*
- * Constructor
- */
-
 
