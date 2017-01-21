@@ -28,9 +28,8 @@
 #ifndef _THERMOSTAT_H_
 #define _THERMOSTAT_H_
 
-#define SAMPLE_SET_SIZE 10
-
 #include <Arduino.h>
+#include "MagicNumbers.h"
 
 /*
  * Implements an on/off thermostat that uses a hystersis loop and 
@@ -48,32 +47,37 @@ class Thermostat {
     void sample();
     void sample(unsigned long _millis);
 
-    // Retrieve values (formatted for the LCD)
-    char * getTemperatureStr(char *);
-    char * getRequestedTemperatureStr(char *);
-    char * getHysteresisStr(char *);
-    char * getMaxHeatTime(char *);
-    char * getMaxTemperature(char *);
+    // Retrieve values
+    int getRequestedTemperature();
+    int getHysteresis();
+    unsigned long getMaxHeatTime();
+    int getMaxTemperature();
+    int getMinTemperature();
+    
+    int getTemperature();
     long getRaw();
 
     // Change values (based on some constants set in the main sketch 
-    void changeRequestedTemperature(int);
-    void changeHysteresis(int);
-    void changeMaxHeatTime(int);
-    void changeMaxTemperature(int);
+    void setRequestedTemperature(int);
+    void setHysteresis(int);
+    void setMaxHeatTime(int);
+    void setMaxTemperature(int);
+    void setMinTemperature(int);
 
   private:
-    const long calX[5] = {43500, 47600, 51500, 55300, 58700}; // factor 100
-    const long calY[5] = {1000, 3000, 5000, 7000, 9000};      // factor 100
+    const long calX[CALIBRATION_SET_SIZE] = {43500L, 47600L, 51500L, 55300L, 58700L};
+    const long calY[CALIBRATION_SET_SIZE] = {1000L, 3000L, 5000L, 7000L, 9000L};
+    
     byte pin;
-    long raw[SAMPLE_SET_SIZE]; // factor 100
+    long raw[SAMPLE_SET_SIZE];
     byte rawIndex;
     
-    int temperature;
+    int temperature;          // An integer is just about enough for my setup.
     int requestedTemperature;
     int hysteresis;
     unsigned long maximumHeatTime;
     int maximumTemperature;
+    int minimumTemperature;
     
     long calculateAverage();
     void interpolateTemperature(long _value);

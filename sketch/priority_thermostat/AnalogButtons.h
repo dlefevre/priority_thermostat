@@ -28,9 +28,8 @@
 #ifndef _ANALOGBUTTON_H_
 #define _ANALOGBUTTON_H_
 
-#define LONGPRESS_TIME 1000
-
 #include <Arduino.h>
+#include "MagicNumbers.h"
 
 template<size_t N>
 class AnalogButtons {

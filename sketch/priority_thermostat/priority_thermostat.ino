@@ -39,33 +39,15 @@
 #include <LiquidCrystal.h>
 #include "AnalogButtons.h"
 #include "Thermostat.h"
+#include "MagicNumbers.h"
+#include "Interface.h"
 
-// LCD pins
-#define LCD_RS_PIN 2
-#define LCD_ENABLE_PIN 3
-#define LCD_D4_PIN 4
-#define LCD_D5_PIN 5
-#define LCD_D6_PIN 6
-#define LCD_D7_PIN 7
-#define LCD_LED_PIN 8
-
-// Other pins
-#define THERMISTOR_PIN A0
-#define BUTTONS_PIN A1
-#define RELAY_PIN 9
-#define ON_OFF_PIN 10
-
-// Other magic variables
-#define ANALOG_TOLERANCE 10
-
-LiquidCrystal lcd(LCD_RS_PIN,
-                  LCD_ENABLE_PIN,
-                  LCD_D4_PIN,
-                  LCD_D5_PIN,
-                  LCD_D6_PIN,
-                  LCD_D7_PIN);
-AnalogButtons<4> buttons(BUTTONS_PIN, ANALOG_TOLERANCE);
+// Objects required for our used features
+LiquidCrystal lcd(LCD_RS_PIN, LCD_ENABLE_PIN, 
+                  LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN, LCD_D7_PIN);
+AnalogButtons<NUMBER_OF_BUTTONS> buttons(BUTTONS_PIN, ANALOG_TOLERANCE);
 Thermostat thermostat(THERMISTOR_PIN);
+Interface interface(&lcd, &buttons, &thermostat);
 
 void setup() {
   Serial.begin(9600);
@@ -90,28 +72,17 @@ void setup() {
   analogReference(EXTERNAL);
 
   // Add buttons
-  buttons.set(0, 1020);
-  buttons.set(1, 926);
-  buttons.set(2, 688);
-  buttons.set(3, 501);
+  buttons.set(BUTTON_DECREASE, 1020);
+  buttons.set(BUTTON_INCREASE, 926);
+  buttons.set(BUTTON_SET, 688);
+  buttons.set(BUTTON_MENU, 501);
 }
 
 void loop() {  
   buttons.sample();
-  if(buttons.isShortPress()) {
-    Serial.print("short: ");
-    Serial.println(buttons.getPressed());
-  }
-  if(buttons.isLongPress()) {
-    Serial.print("long: ");
-    Serial.println(buttons.getPressed());
-  }
-
-  char strBuffer[20];
   thermostat.sample();
-  Serial.print(thermostat.getRaw());
-  Serial.print("/");
-  Serial.println(thermostat.getTemperatureStr(strBuffer));
-
+  interface.interact();
+  interface.render();
+  
   delay(100);
 }

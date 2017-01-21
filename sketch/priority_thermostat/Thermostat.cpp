@@ -28,8 +28,6 @@
 #include "Thermostat.h"
 #include "stdlib.h"
 
-#define UNDEF -9999
-
 /*
  * Constructor
  */
@@ -71,63 +69,45 @@ void Thermostat::sample(unsigned long _millis) {
 }
 
 /*
- * Retrieve formatted temperature
+ * Retrieve temperature
  */
-char * Thermostat::getTemperatureStr(char * _buffer) {
-  char localBuffer[10];
-  memset(localBuffer, '\0', 10);
-
-  // Do the math
-  int integer = temperature / 100;
-  int decimal = temperature % 100;
-  if(decimal < 25) {
-    decimal = 0;
-  } else if(decimal >= 25 && decimal < 50) {
-    decimal = 5;
-  } else if(decimal >= 50 && decimal < 75) {
-    decimal = 5;
-  } else {
-    ++integer;
-    decimal = 0;
-  }
-
-  // Integer part
-  itoa(integer, localBuffer, 10);
-  memcpy(_buffer, localBuffer, strlen(localBuffer) + 1);
-  memcpy(&_buffer[strlen(_buffer)], ".", 2);
-  itoa(decimal, localBuffer, 10);
-  memcpy(&_buffer[strlen(_buffer)], localBuffer, 1);
-  _buffer[strlen(_buffer)] = '\0';
-
-  return _buffer;
+int Thermostat::getTemperature() {
+  return temperature;
 }
 
 /*
- * Retrieve formatted requested temperature
+ * Retrieve requested temperature
  */
-char * Thermostat::getRequestedTemperatureStr(char * _buffer) {
-  return _buffer;
+int Thermostat::getRequestedTemperature() {
+  return requestedTemperature;
 }
 
 /*
- * Retrieve formatted hysteresis value
+ * Retrieve hysteresis value
  */
-char * Thermostat::getHysteresisStr(char * _buffer) {
-  return _buffer;
+int Thermostat::getHysteresis() {
+  return hysteresis;
 }
 
 /*
- * Retrieve formatted maximum time the boiler is heated before going in alarm.
+ * Retrieve maximum time the boiler is heated before going in alarm.
  */
-char * Thermostat::getMaxHeatTime(char * _buffer) {
-  return _buffer;
+unsigned long Thermostat::getMaxHeatTime() {
+  return maximumHeatTime;
 }
 
 /*
- * Retrieve formatted maximum temperature, until going in alarm.
+ * Retrieve maximum temperature, until going in alarm.
  */
-char * Thermostat::getMaxTemperature(char * _buffer) {
-  return _buffer;
+int Thermostat::getMaxTemperature() {
+  return maximumTemperature;
+}
+
+/*
+ * Retrieve minimum temperature, until going in alarm.
+ */
+int Thermostat::getMinTemperature() {
+  return minimumTemperature;
 }
 
 /*
@@ -140,29 +120,29 @@ long Thermostat::getRaw() {
 /*
  * Change the requested temperature
  */
-void Thermostat::changeRequestedTemperature(int _delta) {
-  requestedTemperature += _delta;
+void Thermostat::setRequestedTemperature(int _value) {
+  requestedTemperature = _value;
 }
 
 /*
  * Change hysteresis value
  */
-void Thermostat::changeHysteresis(int _delta) {
-  hysteresis += _delta;
+void Thermostat::setHysteresis(int _value) {
+  hysteresis = _value;
 }
 
 /*
  * Change maximum heat time
  */
-void Thermostat::changeMaxHeatTime(int _delta) {
-  maximumHeatTime += _delta;
+void Thermostat::setMaxHeatTime(int _value) {
+  maximumHeatTime = _value;
 }
 
 /*
  * Change maximum temperature
  */
-void Thermostat::changeMaxTemperature(int _delta) {
-  maximumTemperature += _delta;
+void Thermostat::setMaxTemperature(int _value) {
+  maximumTemperature = _value;
 }
 
 /*
@@ -183,10 +163,10 @@ long Thermostat::calculateAverage() {
 void Thermostat::interpolateTemperature(long _value) {
   // Determine reference frame (when going out of bounds, take the closest)
   byte i0 = 0;
-  if(_value >= calX[SAMPLE_SET_SIZE - 1]) {
-    i0 = SAMPLE_SET_SIZE - 2;
+  if(_value < calX[0]) {
+    i0 = 0;
   } else {
-    for(byte i=0; i<SAMPLE_SET_SIZE - 1; ++i) {
+    for(byte i=CALIBRATION_SET_SIZE - 2; i>=0; --i) {
       if(_value >= calX[i]) {
         i0 = i;
         break;
@@ -194,9 +174,12 @@ void Thermostat::interpolateTemperature(long _value) {
     }
   }
 
-  // Interpolate
-  const byte i1 = i0 + 1;
-  const long xPart = (_value - calX[i0]) / (calX[i1] - calX[i0]);  
-  temperature = calY[i0] * (1 - xPart) + calY[i1] * xPart;
+  // Interpolate.
+  byte i1 = i0 + 1;
+  long xPart = (_value - calX[i0]) * FIXEDPOINT_MLT1 / (calX[i1] - calX[i0]);
+  long tmp = calY[i0] * (FIXEDPOINT_MLT1 - xPart) + calY[i1] * xPart;
+  temperature = tmp / FIXEDPOINT_MLT1;
 }
+
+
 
