@@ -45,7 +45,7 @@
 #define THERMISTOR_PIN A0
 #define BUTTONS_PIN    A1
 #define RELAY_PIN      9
-#define ON_OFF_PIN     10
+#define ENABLE_PIN     10
 
 // Tolerance on the analog value for the buttons.
 #define ANALOG_TOLERANCE 10
@@ -75,14 +75,34 @@
 #define DEFAULT_MIN_TEMPERATURE       0
 #define DEFAULT_MAX_TEMPERATURE       8500
 #define DEFAULT_MAX_HEAT_TIME         7200000L
+#define DEFAULT_GRACE_TIME            120000L
+#define DEFAULT_OFFSET_TEMPERATURE    0
 #define INCR_REQUESTED_TEMPERATURE 50
 #define INCR_HYSTERESIS            50
 #define INCR_MIN_TEMPERATURE       100
 #define INCR_MAX_TEMPERATURE       100
 #define INCR_MAX_HEAT_TIME         60000L 
+#define INCR_GRACE_TIME            60000L 
+#define INCR_OFFSET_TEMPERATURE    50
 
 // Number of menu items
-#define NUMBER_MENU_ITEMS 4
+#define NUMBER_MENU_ITEMS 7
+
+// Reset modes
+#define RESET_NO      0
+#define RESET_NORMAL  1
+#define RESET_FACTORY 2
+
+// EEPROM
+#define EEPROM_TAG     {'P', 'T'}
+#define EEPROM_VERSION 1
+
+// Status
+#define STATUS_STR         {"ready", "heating", "disabled", "grace period" }
+#define STATUS_READY       0
+#define STATUS_HEATING     1
+#define STATUS_DISABLED    2
+#define STATUS_GRACEPERIOD 3
 
 #endif
 

@@ -53,6 +53,7 @@ class Interface {
     void interact(unsigned long _millis);
     void render();
     void render(unsigned long _millis);
+    int getResetMode();
 
   private:
     LiquidCrystal * lcd;
@@ -65,12 +66,15 @@ class Interface {
     bool inSetMode;
     bool inMenu;
     byte menuPosition;
+    int resetMode;
 
     int requestedTemperature;
     int hysteresis;
     int minimumTemperature;
     int maximumTemperature;
     unsigned long maximumHeatTime;
+    unsigned long graceTime;
+    int offsetTemperature;
 
     void loadParameters();
     void saveParameters();

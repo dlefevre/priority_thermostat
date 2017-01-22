@@ -46,7 +46,7 @@
 LiquidCrystal lcd(LCD_RS_PIN, LCD_ENABLE_PIN, 
                   LCD_D4_PIN, LCD_D5_PIN, LCD_D6_PIN, LCD_D7_PIN);
 AnalogButtons<NUMBER_OF_BUTTONS> buttons(BUTTONS_PIN, ANALOG_TOLERANCE);
-Thermostat thermostat(THERMISTOR_PIN);
+Thermostat thermostat(THERMISTOR_PIN, ENABLE_PIN);
 Interface interface(&lcd, &buttons, &thermostat);
 
 void setup() {
@@ -71,6 +71,9 @@ void setup() {
   // Set up 3.3V reference
   analogReference(EXTERNAL);
 
+  // Enable pin
+  pinMode(ENABLE_PIN, INPUT);
+
   // Add buttons
   buttons.set(BUTTON_DECREASE, 1020);
   buttons.set(BUTTON_INCREASE, 926);
@@ -83,6 +86,23 @@ void loop() {
   thermostat.sample();
   interface.interact();
   interface.render();
+
+  if(thermostat.shouldHeat()) {
+    digitalWrite(RELAY_PIN, LOW);
+    digitalWrite(LED_BUILTIN, HIGH);
+  } else {
+    digitalWrite(RELAY_PIN, HIGH);
+    digitalWrite(LED_BUILTIN, LOW);
+  }
+
+  // Check if we have to reset our board
+  int resetMode = interface.getResetMode();
+  if(resetMode != RESET_NO) {
+    if(resetMode == RESET_FACTORY) {
+      thermostat.factoryReset();
+    }
+    asm volatile ("  jmp 0");
+  }
   
-  delay(100);
+  delay(80);
 }

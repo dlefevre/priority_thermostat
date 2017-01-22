@@ -71,6 +71,22 @@ char * formatTimeM(char * _buffer, unsigned long _time) {
 }
 
 /*
+ * Helper function for formatting time (limited to seconds)
+ */
+char * formatTimeS(char * _buffer, unsigned long _time) {
+  // Do the math
+  _time /= 1000; // convert milliseconds to seconds
+  int hours = _time / 3600;
+  int rest = _time % 3600;
+  int minutes = rest / 60;
+  int seconds = rest % 60;
+
+  // Format
+  sprintf(_buffer, "%dh%02d'%02d\"", hours, minutes, seconds);
+  return _buffer;
+}
+
+/*
  * Helper function for getting a pointer to the end of a string
  */
 char * appendPtr(char * _str) {
@@ -89,6 +105,7 @@ Interface::Interface(LiquidCrystal * _lcd,
 
   inMenu = false;
   menuPosition = 0;
+  resetMode = RESET_NO;
   loadParameters();
 }
 
@@ -128,6 +145,13 @@ void Interface::render(unsigned long _millis) {
 }
 
 /*
+ * Return the selected reset mode
+ */
+int Interface::getResetMode() {
+  return inSetMode ? RESET_NO : resetMode;
+}
+
+/*
  * Load all thermostat parameters (thermostat -> interface)
  */
 void Interface::loadParameters() {
@@ -136,6 +160,8 @@ void Interface::loadParameters() {
     minimumTemperature = thermostat->getMinTemperature();
     maximumTemperature = thermostat->getMaxTemperature();
     maximumHeatTime = thermostat->getMaxHeatTime();
+    graceTime = thermostat->getGraceTime();
+    offsetTemperature = thermostat->getOffsetTemperature();
   } else {
     requestedTemperature = thermostat->getRequestedTemperature();
   }
@@ -150,9 +176,13 @@ void Interface::saveParameters() {
     thermostat->setMinTemperature(minimumTemperature);
     thermostat->setMaxTemperature(maximumTemperature);
     thermostat->setMaxHeatTime(maximumHeatTime);
+    thermostat->setGraceTime(graceTime);
+    thermostat->setOffsetTemperature(offsetTemperature);
   } else {
     thermostat->setRequestedTemperature(requestedTemperature);
   }
+
+  thermostat->save();
 }
 
 /*
@@ -172,6 +202,18 @@ void Interface::processParameterIncrement(int _multiplier) {
         break;
       case 3:
         maximumHeatTime += INCR_MAX_HEAT_TIME * _multiplier;
+        break;
+      case 4:
+        graceTime += INCR_GRACE_TIME * _multiplier;
+        break;
+      case 5:
+        offsetTemperature += INCR_OFFSET_TEMPERATURE * _multiplier;
+        break;
+      case 6:
+        resetMode = (resetMode + _multiplier) % 3;
+        if(resetMode < 0) {
+          resetMode = 2;
+        }
         break;
     }
   } else {
@@ -200,9 +242,9 @@ void Interface::interactStatusScreen(unsigned long _millis) {
       inSetMode = false;
       saveParameters();
     } else if(buttons->getPressed() == BUTTON_INCREASE && inSetMode) {
-      processParameterIncrement(1);
-    } else if(buttons->getPressed() == BUTTON_DECREASE && inSetMode) {
       processParameterIncrement(-1);
+    } else if(buttons->getPressed() == BUTTON_DECREASE && inSetMode) {
+      processParameterIncrement(1);
     }
   }
 }
@@ -256,15 +298,21 @@ void Interface::interactMenuScreen(unsigned long _millis) {
 void Interface::renderStatusScreen(unsigned long _millis) {
   clearBuffer();
   
-  sprintf(buffer[0], "Cur.:  ");
+  strcpy(buffer[0], "Cur.:  ");
   formatTemperature(appendPtr(buffer[0]), thermostat->getTemperature());
-  sprintf(buffer[1], "Req.:  ");
+  strcpy(buffer[1], "Req.:  ");
   formatTemperature(appendPtr(buffer[1]), requestedTemperature);
   if(inSetMode) {
-    sprintf(&buffer[1][15], "(set)");
+    strcpy(&buffer[1][15], "(set)");
   }
-  sprintf(buffer[2], "Stat.: ");
-  sprintf(appendPtr(buffer[2]), thermostat->getStatus());
+  strcpy(buffer[2], "Stat.: ");
+  if(resetMode != RESET_NO) {
+    strcpy(appendPtr(buffer[2]), "resetting");
+  } else {
+    strcpy(appendPtr(buffer[2]), thermostat->getStatus());
+  }
+  strcpy(buffer[3], "Time:  ");
+  formatTimeS(appendPtr(buffer[3]), thermostat->getTimeSinceStatusChange());
   
   writeToLcd();
 }
@@ -278,17 +326,38 @@ void Interface::renderMenuScreen(unsigned long _millis) {
   // Populate the menu
   byte menuScreen = menuPosition / 3;
   if(menuScreen == 0) {
-    sprintf(buffer[0], "---- MENU (1/2) ----");
-    sprintf(buffer[1], " Hyst.:     ");
+    strcpy(buffer[0], "---- MENU (1/3) ----");
+    strcpy(buffer[1], " Hyst.:     ");
     formatTemperature(appendPtr(buffer[1]), hysteresis);
-    sprintf(buffer[2], " Min. tmp.: ");
+    strcpy(buffer[2], " Min. tmp.: ");
     formatTemperature(appendPtr(buffer[2]), minimumTemperature);
-    sprintf(buffer[3], " Max. tmp.: ");
+    strcpy(buffer[3], " Max. tmp.: ");
     formatTemperature(appendPtr(buffer[3]), maximumTemperature);
   } else if (menuScreen == 1) {
-    sprintf(buffer[0], "---- MENU (2/2) ----");
-    sprintf(buffer[1], " Max. heat: ");
+    strcpy(buffer[0], "---- MENU (2/3) ----");
+    strcpy(buffer[1], " Max. heat: ");
     formatTimeM(appendPtr(buffer[1]), maximumHeatTime);
+    strcpy(buffer[2], " Grace tm.: ");
+    formatTimeM(appendPtr(buffer[2]), graceTime);
+    strcpy(buffer[3], " Offset:    ");
+    formatTemperature(appendPtr(buffer[3]), offsetTemperature);
+  } else if (menuScreen == 2) {
+    strcpy(buffer[0], "---- MENU (3/3) ----");
+    strcpy(buffer[1], " Reset md.: ");
+    switch(resetMode) {
+      case RESET_NO:
+        strcpy(appendPtr(buffer[1]), "no");
+        break;
+      case RESET_NORMAL:
+        strcpy(appendPtr(buffer[1]), "normal");
+        break;
+      case RESET_FACTORY:
+        strcpy(appendPtr(buffer[1]), "factory");
+        break;
+      default:
+        strcpy(appendPtr(buffer[1]), "error");
+        break;
+    }
   } else {
     sprintf(buffer[0], "# ERROR #");
   }

@@ -27,22 +27,46 @@
 
 #include "Thermostat.h"
 #include "stdlib.h"
+#include <EEPROM.h>
+
+typedef union ul_convert {
+  unsigned long value;
+  byte raw[4];
+} ul_convert_t;
+
+/*
+ * Helper function for calculating the difference between two unsigned longs
+ * while taking a wrap around into account.
+ */
+unsigned long diffUL(unsigned long _low, unsigned long _high) {
+  if(_low > _high) {
+    _high += 4294967295L - _low + 1L;
+    _low = 0;
+  }
+  return _high - _low;
+}
 
 /*
  * Constructor
  */
-Thermostat::Thermostat(byte _pin) {
-  pin = _pin;
+Thermostat::Thermostat(byte _pinThermistor, byte _pinEnable) {
+  pinThermistor = _pinThermistor;
+  pinEnable = _pinEnable;
   rawIndex = 0;
   temperature = UNDEF;
 
-  requestedTemperature = DEFAULT_REQUESTED_TEMPERATURE;
-  hysteresis = DEFAULT_HYSTERESIS;
-  minimumTemperature = DEFAULT_MIN_TEMPERATURE;
-  maximumTemperature = DEFAULT_MAX_TEMPERATURE;
-  maximumHeatTime = DEFAULT_MAX_HEAT_TIME;
+  loadParameters();
   strcpy(status, "initializing");
+  
   heating = false;
+  enabled = false;
+  inGracePeriod = true;
+  lastHeatStart = 0;
+  lastHeat = 0;
+  lastStatusChange = 0;
+  memset(status, '\0', 14);
+  statusid = 0;
+  alarm = false;
 }
 
 /*
@@ -56,35 +80,83 @@ void Thermostat::sample() {
  * Sample temperature
  */
 void Thermostat::sample(unsigned long _millis) {
+  if(alarm) {
+    return;
+  }
+  
   // Pull value from our analog pin
-  raw[rawIndex++] = (long)analogRead(pin) * 100L;
+  raw[rawIndex++] = (long)analogRead(pinThermistor) * 100L;
   delay(10);
 
   // Round robin
   if(rawIndex >= SAMPLE_SET_SIZE) {
     rawIndex = 0;
-    temperature = 0; // anything other than UNDEF, actual temperature will be recalculated.
+    if(temperature == UNDEF) {
+      temperature = 0;
+    }
   }
 
-  // Wait for the sample set to stabilize.
   if(temperature == UNDEF) {
     return;
-  } else if(strcmp(status, "initializing") == 0) {
-    strcpy(status, "ready");
   }
   
-  // Determin the actual temperature
+  // Determine the actual temperature
   long average = calculateAverage();
   interpolateTemperature(average); 
+  temperature += offsetTemperature;
 
+  // Check if hot water is enabled by the heatlink (Nest).
+  enabled = (digitalRead(ENABLE_PIN) == HIGH);
+  inGracePeriod = diffUL(lastHeat, _millis) <= graceTime;
+
+  // Boiler heating
   int halfRange = hysteresis / 2;
   if(!heating && temperature < requestedTemperature - halfRange) {
-    heating = true;
-    strcpy(status, "heating");
+    heating = true; 
+    lastHeatStart = _millis;
   }
   if(heating && temperature > requestedTemperature + halfRange) {
     heating = false;
-    strcpy(status, "ready");
+    if(!inGracePeriod) {
+      lastHeat = _millis;
+    }
+  }
+
+  // Alarms
+  if(temperature < minimumTemperature) {
+    alarm = true;
+    heating = false;
+    sprintf(status, "alarm (min %c)", (char)223);
+  } else if(temperature > maximumTemperature) {
+    alarm = true;
+    heating = false;
+    sprintf(status, "alarm (max %c)", (char)223);
+  }
+  if(heating && diffUL(lastHeatStart, _millis) > maximumHeatTime) {
+    alarm = true;
+    heating = false;
+    sprintf(status, "alarm (max t)");
+  }
+  if(alarm) {
+    return;
+  }
+
+  // Report status
+  byte previousStatusid = statusid;
+  if(enabled && heating) {
+    if(inGracePeriod) {
+      statusid = STATUS_GRACEPERIOD;
+    } else {
+      statusid = STATUS_HEATING;
+    }
+  } else if(enabled && !heating) {
+    statusid = STATUS_READY;
+  } else if (!enabled) {
+    statusid = STATUS_DISABLED;
+  }
+  strcpy(status, statusPrompts[statusid]);
+  if(previousStatusid != statusid) {
+    lastStatusChange = _millis;
   }
 }
 
@@ -95,6 +167,12 @@ int Thermostat::getTemperature() {
   return temperature;
 }
 
+/*
+ * Check the heat condition
+ */
+bool Thermostat::shouldHeat() {
+  return heating && enabled && !inGracePeriod;
+}
 /*
  * Retrieve requested temperature
  */
@@ -131,10 +209,17 @@ int Thermostat::getMinTemperature() {
 }
 
 /*
- * Retrieve raw value
+ * Retrieve grace time (time to wait before reengaging the heater).
  */
-long Thermostat::getRaw() {
-  return calculateAverage();
+unsigned long Thermostat::getGraceTime() {
+  return graceTime;
+}
+
+/*
+ * Retrieve the temperature offset
+ */
+int Thermostat::getOffsetTemperature() {
+  return offsetTemperature;
 }
 
 /*
@@ -142,6 +227,13 @@ long Thermostat::getRaw() {
  */
 char * Thermostat::getStatus() {
   return status;
+}
+
+/*
+ * Return the time since the last status change
+ */
+unsigned long Thermostat::getTimeSinceStatusChange() {
+  return diffUL(lastStatusChange, millis());
 }
 
 /*
@@ -161,7 +253,7 @@ void Thermostat::setHysteresis(int _value) {
 /*
  * Change maximum heat time
  */
-void Thermostat::setMaxHeatTime(int _value) {
+void Thermostat::setMaxHeatTime(unsigned long _value) {
   maximumHeatTime = _value;
 }
 
@@ -177,6 +269,20 @@ void Thermostat::setMaxTemperature(int _value) {
  */
 void Thermostat::setMinTemperature(int _value) {
   minimumTemperature = _value;
+}
+
+/*
+ * Change the grace time.
+ */
+void Thermostat::setGraceTime(unsigned long _value) {
+  graceTime = _value;
+}
+
+/*
+ * Set the offset temperature
+ */
+void Thermostat::setOffsetTemperature(int _value) {
+  offsetTemperature = _value;
 }
 
 /*
@@ -215,5 +321,71 @@ void Thermostat::interpolateTemperature(long _value) {
   temperature = tmp / FIXEDPOINT_MLT1;
 }
 
+/*
+ * Expose the save functionality (required for Interface).
+ */
+void Thermostat::save() {
+  saveParameters();
+}
 
+/*
+ * Clear out the EEPROM
+ */
+void Thermostat::factoryReset() {
+  for (int i=0; i<EEPROM.length(); ++i) {
+    EEPROM.update(i, 0);
+  }
+}
+
+/*
+ * Save all parameters
+ */
+void Thermostat::saveParameters() {
+  byte tag[2] = EEPROM_TAG;
+  byte version = EEPROM_VERSION;
+  
+  EEPROM.put(0, tag);
+  EEPROM.put(2, version);
+  EEPROM.put(3, requestedTemperature);
+  EEPROM.put(5, offsetTemperature);
+  EEPROM.put(7, hysteresis);
+  EEPROM.put(9, maximumHeatTime);
+  EEPROM.put(13, maximumTemperature);
+  EEPROM.put(15, minimumTemperature);
+  EEPROM.put(17, graceTime);
+}
+
+/*
+ * Load all parameters
+ */
+void Thermostat::loadParameters() {
+  byte tag[2];
+  byte expectedTag[2] = EEPROM_TAG;
+  byte version;
+
+  // Verify tag
+  EEPROM.get(0, tag);
+  EEPROM.get(2, version);
+  
+  if(memcmp(tag, expectedTag, 2) != 0 || version != EEPROM_VERSION) {
+    requestedTemperature = DEFAULT_REQUESTED_TEMPERATURE;
+    hysteresis = DEFAULT_HYSTERESIS;
+    minimumTemperature = DEFAULT_MIN_TEMPERATURE;
+    maximumTemperature = DEFAULT_MAX_TEMPERATURE;
+    maximumHeatTime = DEFAULT_MAX_HEAT_TIME;
+    offsetTemperature = DEFAULT_OFFSET_TEMPERATURE;
+    graceTime = DEFAULT_GRACE_TIME;
+    
+    saveParameters();
+    return;
+  }
+
+  EEPROM.get(3, requestedTemperature);
+  EEPROM.get(5, offsetTemperature);
+  EEPROM.get(7, hysteresis);
+  EEPROM.get(9, maximumHeatTime);
+  EEPROM.get(13, maximumTemperature);
+  EEPROM.get(15, minimumTemperature);
+  EEPROM.get(17, graceTime);
+}
 
