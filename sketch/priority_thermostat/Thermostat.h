@@ -60,6 +60,7 @@ class Thermostat {
     bool shouldHeat();
     char * getStatus();
     unsigned long getTimeSinceStatusChange();
+    bool inAlarm();
 
     // Change values (based on some constants set in the main sketch 
     void setRequestedTemperature(int);

@@ -171,8 +171,16 @@ int Thermostat::getTemperature() {
  * Check the heat condition
  */
 bool Thermostat::shouldHeat() {
-  return heating && enabled && !inGracePeriod;
+  return heating && enabled && !inGracePeriod && !alarm;
 }
+
+/*
+ * Check if the system has generated an alarm
+ */
+bool Thermostat::inAlarm() {
+  return alarm;
+}
+
 /*
  * Retrieve requested temperature
  */

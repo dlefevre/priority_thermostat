@@ -104,5 +104,8 @@
 #define STATUS_DISABLED    2
 #define STATUS_GRACEPERIOD 3
 
+// LCD backlight timeout (in ms.)
+#define LCD_LED_TIMEOUT    120000
+
 #endif
 

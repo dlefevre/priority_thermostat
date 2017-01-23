@@ -87,6 +87,7 @@ void loop() {
   interface.interact();
   interface.render();
 
+  // Activate/deactivate the heater
   if(thermostat.shouldHeat()) {
     digitalWrite(RELAY_PIN, LOW);
     digitalWrite(LED_BUILTIN, HIGH);
@@ -95,13 +96,20 @@ void loop() {
     digitalWrite(LED_BUILTIN, LOW);
   }
 
+  // Activate/deactivate the LCD backlight
+  if(thermostat.inAlarm() || buttons.recentlyActive()) {
+    digitalWrite(LCD_LED_PIN, HIGH);
+  } else {
+    digitalWrite(LCD_LED_PIN, LOW);
+  }
+
   // Check if we have to reset our board
   int resetMode = interface.getResetMode();
   if(resetMode != RESET_NO) {
     if(resetMode == RESET_FACTORY) {
       thermostat.factoryReset();
     }
-    asm volatile ("  jmp 0");
+    asm volatile ("jmp 0");
   }
   
   delay(80);

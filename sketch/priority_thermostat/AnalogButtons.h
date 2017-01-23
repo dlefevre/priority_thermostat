@@ -41,6 +41,7 @@ class AnalogButtons {
     byte getPressed();
     bool isShortPress();
     bool isLongPress();
+    bool recentlyActive();
 
   private:
     byte pin;
@@ -51,7 +52,7 @@ class AnalogButtons {
     bool shortPress;
     bool longPress;
     unsigned long downTimestamp;
-    
+    unsigned long lastActivity;
 };
 
 /*
@@ -117,6 +118,8 @@ void AnalogButtons<N>::sample(unsigned long _millis) {
     shortPress = false;
     longPress = false;
     lastPressedButton = -1;
+  } else {
+    lastActivity = _millis;
   }
 }
 
@@ -142,6 +145,21 @@ bool AnalogButtons<N>::isShortPress() {
 template<size_t N>
 bool AnalogButtons<N>::isLongPress() {
   return longPress;
+}
+
+/*
+ * Check if there was any recent activity
+ * note: duplicated code (see diffUL in Thermostat.cpp
+ */
+template<size_t N>
+bool AnalogButtons<N>::recentlyActive() {
+  unsigned long now = millis();
+  if(lastActivity > now) {
+    // accpeted 1ms. error.
+    return (now + 4294967295L - lastActivity) < LCD_LED_TIMEOUT;
+  } else {
+    return (now - lastActivity) < LCD_LED_TIMEOUT;
+  }
 }
 
 #endif
