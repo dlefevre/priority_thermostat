@@ -75,6 +75,7 @@ class Interface {
     unsigned long maximumHeatTime;
     unsigned long graceTime;
     int offsetTemperature;
+    bool serialEnabled;
 
     void loadParameters();
     void saveParameters();

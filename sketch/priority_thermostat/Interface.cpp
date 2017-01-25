@@ -162,6 +162,7 @@ void Interface::loadParameters() {
     maximumHeatTime = thermostat->getMaxHeatTime();
     graceTime = thermostat->getGraceTime();
     offsetTemperature = thermostat->getOffsetTemperature();
+    serialEnabled = thermostat->getSerialEnabled();
   } else {
     requestedTemperature = thermostat->getRequestedTemperature();
   }
@@ -178,6 +179,7 @@ void Interface::saveParameters() {
     thermostat->setMaxHeatTime(maximumHeatTime);
     thermostat->setGraceTime(graceTime);
     thermostat->setOffsetTemperature(offsetTemperature);
+    thermostat->setSerialEnabled(serialEnabled);
   } else {
     thermostat->setRequestedTemperature(requestedTemperature);
   }
@@ -214,6 +216,9 @@ void Interface::processParameterIncrement(int _multiplier) {
         if(resetMode < 0) {
           resetMode = 2;
         }
+        break;
+      case 7:
+        serialEnabled = !serialEnabled;
         break;
     }
   } else {
@@ -261,7 +266,7 @@ void Interface::interactMenuScreen(unsigned long _millis) {
       inSetMode = false;
       loadParameters();
       
-   } else if(buttons->getPressed() == BUTTON_INCREASE) {
+   } else if(buttons->getPressed() == BUTTON_DECREASE) {
     
       if(inSetMode) {
         processParameterIncrement(1);
@@ -269,7 +274,7 @@ void Interface::interactMenuScreen(unsigned long _millis) {
         menuPosition = (menuPosition + 1) % NUMBER_MENU_ITEMS;
       }
       
-    } else if(buttons->getPressed() == BUTTON_DECREASE) {
+    } else if(buttons->getPressed() == BUTTON_INCREASE) {
       
       if(inSetMode) {
         processParameterIncrement(-1);
@@ -358,6 +363,7 @@ void Interface::renderMenuScreen(unsigned long _millis) {
         strcpy(appendPtr(buffer[1]), "error");
         break;
     }
+    sprintf(buffer[2], " Serial C.: %s", serialEnabled ? "on" : "off");
   } else {
     sprintf(buffer[0], "# ERROR #");
   }

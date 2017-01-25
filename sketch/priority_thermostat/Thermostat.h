@@ -55,12 +55,14 @@ class Thermostat {
     int getMinTemperature();
     unsigned long getGraceTime();
     int getOffsetTemperature();
+    bool getSerialEnabled();
     
     int getTemperature();
     bool shouldHeat();
     char * getStatus();
     unsigned long getTimeSinceStatusChange();
     bool inAlarm();
+    bool serialEnabled;
 
     // Change values (based on some constants set in the main sketch 
     void setRequestedTemperature(int);
@@ -70,6 +72,7 @@ class Thermostat {
     void setMinTemperature(int);
     void setGraceTime(unsigned long);
     void setOffsetTemperature(int);
+    void setSerialEnabled(bool);
 
     void save();
     void factoryReset();
@@ -102,6 +105,7 @@ class Thermostat {
     unsigned long lastHeatStart;
     unsigned long lastHeat;
     unsigned long lastStatusChange;
+    unsigned long lastSerialOutput;
     char status[14];
     byte statusid; // use this so we don't have to compare strings all the time.
     bool alarm;

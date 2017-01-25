@@ -48,7 +48,7 @@
 #define ENABLE_PIN     10
 
 // Tolerance on the analog value for the buttons.
-#define ANALOG_TOLERANCE 10
+#define ANALOG_TOLERANCE 15
 
 // How long a button should be held down before we consider it
 // a long-press.
@@ -86,7 +86,7 @@
 #define INCR_OFFSET_TEMPERATURE    50
 
 // Number of menu items
-#define NUMBER_MENU_ITEMS 7
+#define NUMBER_MENU_ITEMS 8
 
 // Reset modes
 #define RESET_NO      0
@@ -106,6 +106,9 @@
 
 // LCD backlight timeout (in ms.)
 #define LCD_LED_TIMEOUT    120000
+
+// Frequency for serial console
+#define SERIAL_FREQUENCY 10000
 
 #endif
 

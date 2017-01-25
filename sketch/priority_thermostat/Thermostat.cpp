@@ -64,9 +64,11 @@ Thermostat::Thermostat(byte _pinThermistor, byte _pinEnable) {
   lastHeatStart = 0;
   lastHeat = 0;
   lastStatusChange = 0;
+  lastSerialOutput = 0;
   memset(status, '\0', 14);
   statusid = 0;
   alarm = false;
+  serialEnabled = false;
 }
 
 /*
@@ -137,6 +139,43 @@ void Thermostat::sample(unsigned long _millis) {
     heating = false;
     sprintf(status, "alarm (max t)");
   }
+
+  // Reporting on serial console
+  if(serialEnabled) {
+    if(_millis - lastSerialOutput >= SERIAL_FREQUENCY) {
+      Serial.print(_millis / 1000);
+      Serial.print(";");
+      Serial.print(temperature / 100); 
+      Serial.print("."); 
+      Serial.print(temperature % 100);
+      Serial.print(";");
+      Serial.print(requestedTemperature / 100); 
+      Serial.print("."); 
+      Serial.print(requestedTemperature % 100);
+      Serial.print(";");
+      Serial.print(hysteresis / 100);
+      Serial.print("."); 
+      Serial.print(hysteresis % 100);
+      Serial.print(";");
+      Serial.print(heating);
+      Serial.print(";");
+      Serial.print(enabled);
+      Serial.print(";");
+      Serial.print(inGracePeriod);
+      Serial.print(";");
+      Serial.print(lastHeatStart / 1000);
+      Serial.print(";");
+      Serial.print(lastHeat / 1000);
+      Serial.print(";");
+      Serial.print(lastStatusChange / 1000);
+      Serial.print(";");
+      Serial.println(alarm);
+
+      lastSerialOutput = _millis;
+    }
+  }
+
+  // Prevent any further status changes if an alarm was set
   if(alarm) {
     return;
   }
@@ -291,6 +330,25 @@ void Thermostat::setGraceTime(unsigned long _value) {
  */
 void Thermostat::setOffsetTemperature(int _value) {
   offsetTemperature = _value;
+}
+
+/*
+ * Enabled/Disable the serial console
+ */
+void Thermostat::setSerialEnabled(bool _value) {
+  serialEnabled = _value;
+  if(serialEnabled) {
+    Serial.begin(9600);
+  } else {
+    Serial.end();
+  }
+}
+
+/*
+ * Retrieve the status of the serial console.
+ */
+bool Thermostat::getSerialEnabled() {
+  return serialEnabled;
 }
 
 /*

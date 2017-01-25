@@ -50,8 +50,6 @@ Thermostat thermostat(THERMISTOR_PIN, ENABLE_PIN);
 Interface interface(&lcd, &buttons, &thermostat);
 
 void setup() {
-  Serial.begin(9600);
-  
   // Set up LCD
   pinMode(LCD_RS_PIN, OUTPUT);
   pinMode(LCD_ENABLE_PIN, OUTPUT);
@@ -77,8 +75,8 @@ void setup() {
   // Add buttons
   buttons.set(BUTTON_DECREASE, 1020);
   buttons.set(BUTTON_INCREASE, 926);
-  buttons.set(BUTTON_SET, 688);
-  buttons.set(BUTTON_MENU, 501);
+  buttons.set(BUTTON_SET, 690);
+  buttons.set(BUTTON_MENU, 506);
 }
 
 void loop() {  
