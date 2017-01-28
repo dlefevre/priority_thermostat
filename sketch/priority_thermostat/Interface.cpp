@@ -247,9 +247,9 @@ void Interface::interactStatusScreen(unsigned long _millis) {
       inSetMode = false;
       saveParameters();
     } else if(buttons->getPressed() == BUTTON_INCREASE && inSetMode) {
-      processParameterIncrement(-1);
-    } else if(buttons->getPressed() == BUTTON_DECREASE && inSetMode) {
       processParameterIncrement(1);
+    } else if(buttons->getPressed() == BUTTON_DECREASE && inSetMode) {
+      processParameterIncrement(-1);
     }
   }
 }
@@ -269,7 +269,7 @@ void Interface::interactMenuScreen(unsigned long _millis) {
    } else if(buttons->getPressed() == BUTTON_DECREASE) {
     
       if(inSetMode) {
-        processParameterIncrement(1);
+        processParameterIncrement(-1);
       } else {
         menuPosition = (menuPosition + 1) % NUMBER_MENU_ITEMS;
       }
@@ -277,7 +277,7 @@ void Interface::interactMenuScreen(unsigned long _millis) {
     } else if(buttons->getPressed() == BUTTON_INCREASE) {
       
       if(inSetMode) {
-        processParameterIncrement(-1);
+        processParameterIncrement(1);
       } else {
         if(menuPosition == 0) {
           menuPosition = NUMBER_MENU_ITEMS - 1;
