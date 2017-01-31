@@ -77,6 +77,8 @@ class Interface {
     int offsetTemperature;
     bool serialEnabled;
 
+    unsigned long lastLcdReset;
+    
     void loadParameters();
     void saveParameters();
     void processParameterIncrement(int);
@@ -87,7 +89,7 @@ class Interface {
     void renderMenuScreen(unsigned long _millis);
 
     void clearBuffer();
-    void writeToLcd();
+    void writeToLcd(unsigned long);
 };
 
 #endif

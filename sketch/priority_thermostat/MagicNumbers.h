@@ -106,6 +106,8 @@
 
 // LCD backlight timeout (in ms.)
 #define LCD_LED_TIMEOUT    120000
+// LCD reset time
+#define LCD_RESET          10000
 
 // Frequency for serial console
 #define SERIAL_FREQUENCY 10000

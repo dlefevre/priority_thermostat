@@ -28,23 +28,12 @@
 #include "Thermostat.h"
 #include "stdlib.h"
 #include <EEPROM.h>
+#include "Functions.h"
 
 typedef union ul_convert {
   unsigned long value;
   byte raw[4];
 } ul_convert_t;
-
-/*
- * Helper function for calculating the difference between two unsigned longs
- * while taking a wrap around into account.
- */
-unsigned long diffUL(unsigned long _low, unsigned long _high) {
-  if(_low > _high) {
-    _high += 4294967295L - _low + 1L;
-    _low = 0;
-  }
-  return _high - _low;
-}
 
 /*
  * Constructor
@@ -68,7 +57,6 @@ Thermostat::Thermostat(byte _pinThermistor, byte _pinEnable) {
   memset(status, '\0', 14);
   statusid = 0;
   alarm = false;
-  serialEnabled = false;
 }
 
 /*
@@ -419,6 +407,7 @@ void Thermostat::saveParameters() {
   EEPROM.put(13, maximumTemperature);
   EEPROM.put(15, minimumTemperature);
   EEPROM.put(17, graceTime);
+  EEPROM.put(21, serialEnabled);
 }
 
 /*
@@ -441,6 +430,7 @@ void Thermostat::loadParameters() {
     maximumHeatTime = DEFAULT_MAX_HEAT_TIME;
     offsetTemperature = DEFAULT_OFFSET_TEMPERATURE;
     graceTime = DEFAULT_GRACE_TIME;
+    serialEnabled = false;
     
     saveParameters();
     return;
@@ -453,5 +443,6 @@ void Thermostat::loadParameters() {
   EEPROM.get(13, maximumTemperature);
   EEPROM.get(15, minimumTemperature);
   EEPROM.get(17, graceTime);
+  EEPROM.get(21, serialEnabled);
 }
 

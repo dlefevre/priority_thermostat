@@ -27,6 +27,7 @@
 
 #include "Interface.h"
 #include <stdlib.h>
+#include "Functions.h"
 
 /*
  * Helper function for formating and rouding temperatures
@@ -106,6 +107,7 @@ Interface::Interface(LiquidCrystal * _lcd,
   inMenu = false;
   menuPosition = 0;
   resetMode = RESET_NO;
+  lastLcdReset = 0;
   loadParameters();
 }
 
@@ -319,7 +321,7 @@ void Interface::renderStatusScreen(unsigned long _millis) {
   strcpy(buffer[3], "Time:  ");
   formatTimeS(appendPtr(buffer[3]), thermostat->getTimeSinceStatusChange());
   
-  writeToLcd();
+  writeToLcd(_millis);
 }
 
 /*
@@ -371,7 +373,7 @@ void Interface::renderMenuScreen(unsigned long _millis) {
   // Set the cursor
   buffer[(menuPosition % 3) + 1][0] = inSetMode ? '*' : '>';
 
-  writeToLcd();
+  writeToLcd(_millis);
 }
 
 /*
@@ -389,7 +391,7 @@ void Interface::clearBuffer() {
  * Dump the buffer to the LCD. '\0' characters in the
  * middle of a line are replaced by space.
  */
-void Interface::writeToLcd() {
+void Interface::writeToLcd(unsigned long _millis) {
   for(int i=0; i<LCD_ROWS; ++i) {
     for(int j=0; j<LCD_COLUMNS; ++j) {
       if(buffer[i][j] == '\0') {
@@ -397,7 +399,13 @@ void Interface::writeToLcd() {
       }
     }
     buffer[i][LCD_COLUMNS] = '\0';
+  }
 
+  if(diffUL(lastLcdReset, _millis) >= LCD_RESET) {
+    lcd->begin(20, 4);
+    lastLcdReset = _millis;
+  }
+  for(int i=0; i<LCD_ROWS; ++i) {
     lcd->setCursor(0, i);
     char * ptr = buffer[i];
     lcd->print(ptr);
