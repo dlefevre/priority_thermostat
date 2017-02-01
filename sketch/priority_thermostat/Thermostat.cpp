@@ -135,7 +135,7 @@ void Thermostat::sample(unsigned long _millis) {
   }
 
   // Reporting on serial console
-  if(serialEnabled && _millis - lastSerialOutput >= SERIAL_FREQUENCY) {
+  if(serialEnabled && diffUL(lastSerialOutput, _millis) >= SERIAL_FREQUENCY) {
     updateSerial(_millis);
     lastSerialOutput = _millis;
   }
