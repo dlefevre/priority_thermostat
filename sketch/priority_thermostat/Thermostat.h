@@ -114,6 +114,7 @@ class Thermostat {
     void interpolateTemperature(long _value);
     void saveParameters();
     void loadParameters();
+    void updateSerial(unsigned long);
 };
 
 #endif

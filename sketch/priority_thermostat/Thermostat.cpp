@@ -112,6 +112,12 @@ void Thermostat::sample(unsigned long _millis) {
     }
   }
 
+  // Reset lastHeatStart if disabled (so the timestamp is correct when
+  // the thermostat is enabled again)
+  if(!enabled && heating) {
+    lastHeatStart = _millis;
+  }
+
   // Alarms
   if(temperature < minimumTemperature) {
     alarm = true;
@@ -129,38 +135,9 @@ void Thermostat::sample(unsigned long _millis) {
   }
 
   // Reporting on serial console
-  if(serialEnabled) {
-    if(_millis - lastSerialOutput >= SERIAL_FREQUENCY) {
-      Serial.print(_millis / 1000);
-      Serial.print(";");
-      Serial.print(temperature / 100); 
-      Serial.print("."); 
-      Serial.print(temperature % 100);
-      Serial.print(";");
-      Serial.print(requestedTemperature / 100); 
-      Serial.print("."); 
-      Serial.print(requestedTemperature % 100);
-      Serial.print(";");
-      Serial.print(hysteresis / 100);
-      Serial.print("."); 
-      Serial.print(hysteresis % 100);
-      Serial.print(";");
-      Serial.print(heating);
-      Serial.print(";");
-      Serial.print(enabled);
-      Serial.print(";");
-      Serial.print(inGracePeriod);
-      Serial.print(";");
-      Serial.print(lastHeatStart / 1000);
-      Serial.print(";");
-      Serial.print(lastHeat / 1000);
-      Serial.print(";");
-      Serial.print(lastStatusChange / 1000);
-      Serial.print(";");
-      Serial.println(alarm);
-
-      lastSerialOutput = _millis;
-    }
+  if(serialEnabled && _millis - lastSerialOutput >= SERIAL_FREQUENCY) {
+    updateSerial(_millis);
+    lastSerialOutput = _millis;
   }
 
   // Prevent any further status changes if an alarm was set
@@ -444,5 +421,38 @@ void Thermostat::loadParameters() {
   EEPROM.get(15, minimumTemperature);
   EEPROM.get(17, graceTime);
   EEPROM.get(21, serialEnabled);
+}
+
+/*
+ * Print status to the serial console
+ */
+void Thermostat::updateSerial(unsigned long _millis) {
+  Serial.print(_millis / 1000);
+  Serial.print(";");
+  Serial.print(temperature / 100); 
+  Serial.print("."); 
+  Serial.print(temperature % 100);
+  Serial.print(";");
+  Serial.print(requestedTemperature / 100); 
+  Serial.print("."); 
+  Serial.print(requestedTemperature % 100);
+  Serial.print(";");
+  Serial.print(hysteresis / 100);
+  Serial.print("."); 
+  Serial.print(hysteresis % 100);
+  Serial.print(";");
+  Serial.print(heating);
+  Serial.print(";");
+  Serial.print(enabled);
+  Serial.print(";");
+  Serial.print(inGracePeriod);
+  Serial.print(";");
+  Serial.print(lastHeatStart / 1000);
+  Serial.print(";");
+  Serial.print(lastHeat / 1000);
+  Serial.print(";");
+  Serial.print(lastStatusChange / 1000);
+  Serial.print(";");
+  Serial.println(alarm);  
 }
 
